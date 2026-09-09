@@ -127,12 +127,29 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Scoped fetch to automatically redirect /api calls to API_BASE when VITE_API_URL is configured
-  const fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+  // and safely intercept .json() so that empty or non-JSON responses never crash with "Unexpected end of JSON input"
+  const fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     let target = input;
     if (typeof input === 'string' && input.startsWith('/api') && API_BASE) {
       target = `${API_BASE}${input}`;
     }
-    return window.fetch(target, init);
+    const res = await window.fetch(target, init);
+
+    // Patch .json() to safely handle empty body or non-JSON without throwing SyntaxError
+    const originalJson = res.json.bind(res);
+    res.json = async () => {
+      try {
+        const text = await res.text();
+        if (!text || !text.trim()) {
+          return {};
+        }
+        return JSON.parse(text);
+      } catch {
+        return {};
+      }
+    };
+
+    return res;
   };
 
   // Traditional Local Roles (default: faculty/student selection)
@@ -199,8 +216,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncData = async () => {
     try {
       const response = await fetch('/api/methods');
-      if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.includes('application/json')) {
         const methodsData = await response.json();
+        if (!Array.isArray(methodsData) || methodsData.length === 0) {
+          throw new Error('No valid methods returned from API');
+        }
         const schedRes = await fetch('/api/schedule');
         const schedData = await schedRes.json();
         const resRes = await fetch('/api/resources');
@@ -209,9 +230,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const studData = studRes.ok ? await studRes.json() : [];
 
         setTeachingMethods(methodsData);
-        setWeeklyPlan(schedData);
-        setResources(resData);
-        setStudents(studData);
+        setWeeklyPlan(Array.isArray(schedData) ? schedData : []);
+        setResources(Array.isArray(resData) ? resData : []);
+        setStudents(Array.isArray(studData) ? studData : []);
         setIsApiMode(true);
       } else {
         throw new Error('API server unreachable');
@@ -1163,9 +1184,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchTeachingTasks = async () => {
     try {
       const res = await fetch('/api/teaching-tasks', { credentials: 'include' });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        setTeachingTasks(data);
+        if (Array.isArray(data)) setTeachingTasks(data);
       }
     } catch (err) {
       console.error('Error fetching teaching tasks:', err);
@@ -1175,9 +1197,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchPublicTeachingTasks = async () => {
     try {
       const res = await fetch('/api/teaching-tasks/public');
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        setPublicTeachingTasks(data);
+        if (Array.isArray(data)) setPublicTeachingTasks(data);
       }
     } catch (err) {
       console.error('Error fetching public teaching tasks:', err);
@@ -1252,9 +1275,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchTeachingSubmissions = async () => {
     try {
       const res = await fetch('/api/teaching-submissions', { credentials: 'include' });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        setTeachingSubmissions(data);
+        if (Array.isArray(data)) setTeachingSubmissions(data);
       }
     } catch (err) {
       console.error('Error fetching submissions:', err);
@@ -1264,9 +1288,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchTrackingSubmissions = async () => {
     try {
       const res = await fetch('/api/teaching-submissions/tracking', { credentials: 'include' });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        setTrackingSubmissions(data);
+        if (Array.isArray(data)) setTrackingSubmissions(data);
       }
     } catch (err) {
       console.error('Error fetching tracking data:', err);
@@ -1368,9 +1393,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchPublicShowcase = async () => {
     try {
       const res = await fetch('/api/teaching-submissions/showcase');
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        setPublicShowcaseMethods(data);
+        if (Array.isArray(data)) setPublicShowcaseMethods(data);
       }
     } catch (err) {
       console.error('Error fetching public showcase methods:', err);
