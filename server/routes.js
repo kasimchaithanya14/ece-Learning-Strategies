@@ -775,16 +775,14 @@ router.delete('/admin/submissions/:id', authenticateToken, requirePermission('Ma
 });
 
 // ==========================================
-// 6. STUDENT COUNSELLING ENDPOINTS
+// 6. STUDENT DIRECTORY ENDPOINTS
 // ==========================================
 
 // GET: Admin - list students with role-based access control
 router.get('/admin/students', authenticateToken, async (req, res) => {
   const canAccess = req.user.role === 'SUPER_ADMIN' || 
                     req.user.permissionsList.includes('View Students') || 
-                    req.user.permissionsList.includes('Manage Students') ||
-                    req.user.permissionsList.includes('View Counselling') || 
-                    req.user.permissionsList.includes('Manage Counselling');
+                    req.user.permissionsList.includes('Manage Students');
   if (!canAccess) {
     return res.status(403).json({ error: 'Permission denied. Requires student viewing access.' });
   }
@@ -796,10 +794,7 @@ router.get('/admin/students', authenticateToken, async (req, res) => {
         SELECT 
           s.*,
           sa.sub_admin_id AS assignedSubAdminId,
-          u.name AS assignedSubAdminName,
-          (SELECT counselling_date FROM counselling_sessions WHERE student_id = s.id ORDER BY counselling_date DESC, id DESC LIMIT 1) AS latestCounsellingDate,
-          (SELECT counsellor_name FROM counselling_sessions WHERE student_id = s.id ORDER BY counselling_date DESC, id DESC LIMIT 1) AS latestCounsellorName,
-          (SELECT COUNT(*) FROM counselling_sessions WHERE student_id = s.id) AS counsellingSessionsCount
+          u.name AS assignedSubAdminName
         FROM students s
         LEFT JOIN student_assignments sa ON s.id = sa.student_id
         LEFT JOIN users u ON sa.sub_admin_id = u.id
@@ -810,10 +805,7 @@ router.get('/admin/students', authenticateToken, async (req, res) => {
         SELECT 
           s.*,
           sa.sub_admin_id AS assignedSubAdminId,
-          u.name AS assignedSubAdminName,
-          (SELECT counselling_date FROM counselling_sessions WHERE student_id = s.id ORDER BY counselling_date DESC, id DESC LIMIT 1) AS latestCounsellingDate,
-          (SELECT counsellor_name FROM counselling_sessions WHERE student_id = s.id ORDER BY counselling_date DESC, id DESC LIMIT 1) AS latestCounsellorName,
-          (SELECT COUNT(*) FROM counselling_sessions WHERE student_id = s.id) AS counsellingSessionsCount
+          u.name AS assignedSubAdminName
         FROM students s
         JOIN student_assignments sa ON s.id = sa.student_id
         JOIN users u ON sa.sub_admin_id = u.id
@@ -838,9 +830,7 @@ router.get('/admin/students/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const canAccess = req.user.role === 'SUPER_ADMIN' || 
                     req.user.permissionsList.includes('View Students') || 
-                    req.user.permissionsList.includes('Manage Students') ||
-                    req.user.permissionsList.includes('View Counselling') || 
-                    req.user.permissionsList.includes('Manage Counselling');
+                    req.user.permissionsList.includes('Manage Students');
   if (!canAccess) {
     return res.status(403).json({ error: 'Permission denied. Requires student viewing access.' });
   }
@@ -858,10 +848,7 @@ router.get('/admin/students/:id', authenticateToken, async (req, res) => {
       SELECT 
         s.*,
         sa.sub_admin_id AS assignedSubAdminId,
-        u.name AS assignedSubAdminName,
-        (SELECT counselling_date FROM counselling_sessions WHERE student_id = s.id ORDER BY counselling_date DESC, id DESC LIMIT 1) AS latestCounsellingDate,
-        (SELECT counsellor_name FROM counselling_sessions WHERE student_id = s.id ORDER BY counselling_date DESC, id DESC LIMIT 1) AS latestCounsellorName,
-        (SELECT COUNT(*) FROM counselling_sessions WHERE student_id = s.id) AS counsellingSessionsCount
+        u.name AS assignedSubAdminName
       FROM students s
       LEFT JOIN student_assignments sa ON s.id = sa.student_id
       LEFT JOIN users u ON sa.sub_admin_id = u.id
@@ -906,7 +893,7 @@ router.post('/admin/students', authenticateToken, requirePermission('Manage Stud
     const existingRoll = await dbGet('SELECT id, name, rollNumber FROM students WHERE rollNumber = ?', [rollNumber]);
     if (existingRoll) {
       return res.status(400).json({
-        error: `Student with roll number "${rollNumber}" already exists (${existingRoll.name}, ID: ${existingRoll.id}). You can directly record counselling notes for this student.`,
+        error: `Student with roll number "${rollNumber}" already exists (${existingRoll.name}, ID: ${existingRoll.id}).`,
         duplicate: true,
         existingStudentId: existingRoll.id
       });
@@ -1079,155 +1066,7 @@ router.delete('/admin/students/:id', authenticateToken, requirePermission('Manag
   }
 });
 
-// GET: Admin - fetch counselling history for a student
-router.get('/admin/students/:id/counselling', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const canAccess = req.user.role === 'SUPER_ADMIN' || 
-                    req.user.permissionsList.includes('View Counselling') || 
-                    req.user.permissionsList.includes('Manage Counselling');
-  if (!canAccess) {
-    return res.status(403).json({ error: 'Permission denied. Requires view counselling permission.' });
-  }
 
-  try {
-    if (req.user.role === 'SUB_ADMIN') {
-      const assignment = await dbGet('SELECT 1 FROM student_assignments WHERE student_id = ? AND sub_admin_id = ?', [id, req.user.id]);
-      if (!assignment) {
-        await logActivity(req.user.name, 'Unauthorized Counselling Access Attempt', `Student ID: ${id}`, 'Denied');
-        return res.status(403).json({ error: 'Access denied. You are not assigned to this student.' });
-      }
-    }
-
-    const history = await dbQuery('SELECT * FROM counselling_sessions WHERE student_id = ? ORDER BY counselling_date DESC, id DESC', [id]);
-    return res.json(history);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Failed to fetch student counselling history.' });
-  }
-});
-
-// POST: Admin - add a new dated counselling session (can be added multiple times without overwriting)
-router.post('/admin/students/:id/counselling', authenticateToken, requirePermission('Manage Counselling'), async (req, res) => {
-  const { id } = req.params;
-  const { counselling_date, type, private_notes, student_concerns, guidance, action_items, follow_up_date, follow_up_required, status } = req.body;
-
-  if (!counselling_date || !type || !private_notes) {
-    return res.status(400).json({ error: 'Counselling Date, Counselling Category, and Discussion Notes are required.' });
-  }
-
-  try {
-    if (req.user.role === 'SUB_ADMIN') {
-      const assignment = await dbGet('SELECT 1 FROM student_assignments WHERE student_id = ? AND sub_admin_id = ?', [id, req.user.id]);
-      if (!assignment) {
-        await logActivity(req.user.name, 'Unauthorized Session Creation Attempt', `Student ID: ${id}`, 'Denied');
-        return res.status(403).json({ error: 'Access denied. You are not assigned to this student.' });
-      }
-    }
-
-    const student = await dbGet('SELECT name, rollNumber FROM students WHERE id = ?', [id]);
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found.' });
-    }
-
-    const counsellorId = req.user.id;
-    const counsellorName = req.user.name;
-
-    await dbRun(
-      `INSERT INTO counselling_sessions (
-        student_id, counsellor_id, counsellor_name, counselling_date, type, private_notes,
-        student_concerns, guidance, action_items, follow_up_date, follow_up_required, status,
-        publish_to_home, allow_student_name_public, public_title, public_summary
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '', '')`,
-      [
-        id, counsellorId, counsellorName, counselling_date, type, private_notes,
-        student_concerns || '', guidance || '', action_items || '', follow_up_date || '',
-        follow_up_required || 'No', status || 'Completed'
-      ]
-    );
-
-    await logActivity(req.user.name, 'Created Counselling Record', `Student: ${student.rollNumber}`, 'Success');
-
-    return res.status(201).json({ message: 'Counselling session recorded successfully.' });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Failed to record counselling session.' });
-  }
-});
-
-// PUT: Admin - edit a counselling session
-router.put('/admin/counselling/:sessionId', authenticateToken, requirePermission('Manage Counselling'), async (req, res) => {
-  const { sessionId } = req.params;
-  const { counselling_date, type, private_notes, student_concerns, guidance, action_items, follow_up_date, follow_up_required, status } = req.body;
-
-  if (!counselling_date || !type || !private_notes) {
-    return res.status(400).json({ error: 'Counselling Date, Counselling Category, and Discussion Notes are required.' });
-  }
-
-  try {
-    const session = await dbGet('SELECT student_id FROM counselling_sessions WHERE id = ?', [sessionId]);
-    if (!session) {
-      return res.status(404).json({ error: 'Counselling session not found.' });
-    }
-
-    if (req.user.role === 'SUB_ADMIN') {
-      const assignment = await dbGet('SELECT 1 FROM student_assignments WHERE student_id = ? AND sub_admin_id = ?', [session.student_id, req.user.id]);
-      if (!assignment) {
-        await logActivity(req.user.name, 'Unauthorized Session Edit Attempt', `Session ID: ${sessionId}`, 'Denied');
-        return res.status(403).json({ error: 'Access denied. You are not assigned to this student.' });
-      }
-    }
-
-    const student = await dbGet('SELECT rollNumber FROM students WHERE id = ?', [session.student_id]);
-
-    await dbRun(
-      `UPDATE counselling_sessions SET 
-        counselling_date = ?, type = ?, private_notes = ?, student_concerns = ?, guidance = ?,
-        action_items = ?, follow_up_date = ?, follow_up_required = ?, status = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?`,
-      [
-        counselling_date, type, private_notes, student_concerns || '', guidance || '',
-        action_items || '', follow_up_date || '', follow_up_required || 'No', status || 'Completed',
-        sessionId
-      ]
-    );
-
-    await logActivity(req.user.name, 'Updated Counselling Record', `Student: ${student?.rollNumber || session.student_id}`, 'Success');
-    return res.json({ message: 'Counselling record updated successfully.' });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Failed to update counselling session.' });
-  }
-});
-
-// DELETE: Admin - delete a counselling session
-router.delete('/admin/counselling/:sessionId', authenticateToken, requirePermission('Manage Counselling'), async (req, res) => {
-  const { sessionId } = req.params;
-  try {
-    const session = await dbGet('SELECT student_id FROM counselling_sessions WHERE id = ?', [sessionId]);
-    if (!session) {
-      return res.status(404).json({ error: 'Counselling session not found.' });
-    }
-
-    if (req.user.role === 'SUB_ADMIN') {
-      const assignment = await dbGet('SELECT 1 FROM student_assignments WHERE student_id = ? AND sub_admin_id = ?', [session.student_id, req.user.id]);
-      if (!assignment) {
-        await logActivity(req.user.name, 'Unauthorized Session Delete Attempt', `Session ID: ${sessionId}`, 'Denied');
-        return res.status(403).json({ error: 'Access denied. You are not assigned to this student.' });
-      }
-    }
-
-    const student = await dbGet('SELECT rollNumber FROM students WHERE id = ?', [session.student_id]);
-
-    await dbRun('DELETE FROM counselling_sessions WHERE id = ?', [sessionId]);
-    await logActivity(req.user.name, 'Deleted Counselling Record', `Student: ${student?.rollNumber || session.student_id}`, 'Success');
-
-    return res.json({ message: 'Counselling record deleted successfully.' });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Failed to delete counselling session.' });
-  }
-});
 
 // GET: Admin - list sub-admin student counts and assignments
 router.get('/admin/assignments', authenticateToken, requireRole(['SUPER_ADMIN']), async (req, res) => {
@@ -1356,7 +1195,7 @@ router.post('/admin/assignments', authenticateToken, requireRole(['SUPER_ADMIN']
       `, [sId, subAdminId, req.user.name]);
     }
 
-    await logActivity(req.user.name, 'Assigned Students', `Counsellor: ${subAdmin.name}, Students count: ${studentIds.length}`, 'Success');
+    await logActivity(req.user.name, 'Assigned Students', `Mentor: ${subAdmin.name}, Students count: ${studentIds.length}`, 'Success');
     return res.status(200).json({ success: true, message: 'Students successfully assigned.' });
   } catch (error) {
     console.error(error);

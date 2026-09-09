@@ -8,13 +8,12 @@ import { WeeklySchedulePlanner } from './components/WeeklySchedulePlanner';
 import { OutcomesAnalytics } from './components/OutcomesAnalytics';
 import { CoursewareResources } from './components/CoursewareResources';
 import { StudentRoster } from './components/StudentRoster';
-import { StudentCounsellingPortal } from './components/StudentCounsellingPortal';
+import { AdminLogin } from './components/AdminLogin';
+import { AdminDashboard } from './components/AdminDashboard';
 import { MethodDetailModal } from './components/MethodDetailModal';
 import { ResourceViewerModal } from './components/ResourceViewerModal';
 import { DailyQuizModule } from './components/DailyQuizModule';
 import { AITutorModal } from './components/AITutorModal';
-import { AdminLogin } from './components/AdminLogin';
-import { AdminDashboard } from './components/AdminDashboard';
 import {
   BookOpen,
   Calendar,
@@ -22,18 +21,17 @@ import {
   FileText,
   Users,
   CheckCircle2,
-  GraduationCap,
-  HeartHandshake
+  GraduationCap
 } from 'lucide-react';
 
 interface DashboardContentProps {
   navigate: (path: string) => void;
-  initialTab?: 'methods' | 'schedule' | 'outcomes' | 'resources' | 'roster' | 'counselling';
+  initialTab?: 'methods' | 'schedule' | 'outcomes' | 'resources' | 'roster';
 }
 
 const DashboardContent: React.FC<DashboardContentProps> = ({ navigate, initialTab = 'methods' }) => {
   const { toastMessage } = useApp();
-  const [activeTab, setActiveTab] = useState<'methods' | 'schedule' | 'outcomes' | 'resources' | 'roster' | 'counselling'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'methods' | 'schedule' | 'outcomes' | 'resources' | 'roster'>(initialTab);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -104,17 +102,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ navigate, initialTa
               <Users className="h-4 w-4 text-dhanekula-royal" />
               <span>Student Directory</span>
             </button>
-
-            <button
-              onClick={() => setActiveTab('counselling')}
-              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'counselling'
-                ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 scale-105'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-                }`}
-            >
-              <HeartHandshake className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Student Counselling</span>
-            </button>
           </nav>
         </div>
 
@@ -125,7 +112,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ navigate, initialTa
           {activeTab === 'outcomes' && <OutcomesAnalytics />}
           {activeTab === 'resources' && <CoursewareResources />}
           {activeTab === 'roster' && <StudentRoster />}
-          {activeTab === 'counselling' && <StudentCounsellingPortal />}
         </div>
 
       </main>
@@ -189,13 +175,6 @@ const MainAppContent: React.FC = () => {
     setPath(newPath);
   };
 
-  // Route switches
-  if (path === '/student-counselling') {
-    if (isAdminLoggedIn) {
-      return <AdminDashboard navigate={navigate} initialTab="counselling" />;
-    }
-    return <DashboardContent navigate={navigate} initialTab="roster" />;
-  }
 
   if (path === '/admin') {
     if (!isAdminLoggedIn) {

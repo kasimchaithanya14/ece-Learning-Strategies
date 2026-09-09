@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { AdminUser, AuditLog, TeachingMethod, CoursewareResource, Student, MediaSubmission, CounsellingSession, TeachingTask, TeachingSubmission } from '../types';
+import { AdminUser, AuditLog, TeachingMethod, CoursewareResource, Student, MediaSubmission, TeachingTask, TeachingSubmission } from '../types';
 import { getYouTubeEmbedUrl } from './TeachingMethodsGrid';
 import {
   GraduationCap,
@@ -30,7 +30,6 @@ import {
   FileDown,
   Image,
   Download,
-  HeartHandshake,
   Key,
   ShieldCheck,
   ShieldAlert,
@@ -55,7 +54,7 @@ import {
 
 interface AdminDashboardProps {
   navigate: (path: string) => void;
-  initialTab?: 'overview' | 'subadmins' | 'methods' | 'counselling' | 'content' | 'submissions' | 'logs' | 'settings';
+  initialTab?: 'overview' | 'subadmins' | 'methods' | 'students' | 'content' | 'submissions' | 'logs' | 'settings';
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initialTab = 'overview' }) => {
@@ -90,16 +89,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     approveSubmission,
     rejectSubmission,
     deleteSubmission,
-    // Student Counselling
+    // Student Directory
     adminStudents,
     fetchAdminStudents,
     addStudent,
     updateStudent,
     deleteStudent,
-    fetchCounsellingHistory,
-    addCounsellingSession,
-    updateCounsellingSession,
-    deleteCounsellingSession,
     changePassword,
     // Innovative Teaching–Learning Methods Workflow
     teachingTasks,
@@ -120,7 +115,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
   const isSuperAdmin = adminUser?.role === 'SUPER_ADMIN';
 
   // Navigation state within Dashboard
-  const [activeAdminTab, setActiveAdminTab] = useState<'overview' | 'subadmins' | 'methods' | 'counselling' | 'content' | 'submissions' | 'logs' | 'settings'>(initialTab);
+  const [activeAdminTab, setActiveAdminTab] = useState<'overview' | 'subadmins' | 'methods' | 'students' | 'content' | 'submissions' | 'logs' | 'settings'>(initialTab);
   
   // Mobile UI States
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -222,36 +217,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     batch: ''
   });
 
-  // Counselling Form states
-  const [showCounsellingFormModal, setShowCounsellingFormModal] = useState(false);
-  const [counsellingStudentId, setCounsellingStudentId] = useState<string | null>(null);
-  const [counsellingStudentName, setCounsellingStudentName] = useState('');
-  const [editingSessionId, setEditingSessionId] = useState<number | null>(null); // null means adding new
-  const [counsellingForm, setCounsellingForm] = useState({
-    counselling_date: new Date().toISOString().split('T')[0],
-    type: 'Academic',
-    private_notes: '',
-    student_concerns: '',
-    guidance: '',
-    action_items: '',
-    follow_up_date: '',
-    follow_up_required: 'No' as 'Yes' | 'No',
-    status: 'Completed' as 'Draft' | 'Completed' | 'Follow-Up Required'
-  });
-
   // Detailed profile view state
   const [viewingStudentProfile, setViewingStudentProfile] = useState<Student | null>(null);
-  const [counsellingHistory, setCounsellingHistory] = useState<CounsellingSession[]>([]);
 
-  // Filters for student directory & counselling
+  // Filters for student directory
   const [filterYear, setFilterYear] = useState('All');
   const [filterSemester, setFilterSemester] = useState('All');
   const [filterSection, setFilterSection] = useState('All');
   const [filterAcademicStatus, setFilterAcademicStatus] = useState('All');
   const [filterBatch, setFilterBatch] = useState('All');
-  const [filterCounsellor, setFilterCounsellor] = useState('All');
-  const [filterCounsellingStatus, setFilterCounsellingStatus] = useState('All');
-  const [filterCounsellingDate, setFilterCounsellingDate] = useState('All');
   const [viewingSubAdmin, setViewingSubAdmin] = useState<AdminUser | null>(null);
 
   // Settings tab Password states
@@ -333,9 +307,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     'View Analytics',
     'Manage Students',
     'View Students',
-    'Manage Counselling',
-    'View Counselling',
-    'Publish Counselling',
     'View Activity Logs',
     'Manage Media Submissions'
   ];
@@ -349,7 +320,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     if (activeAdminTab === 'submissions' && hasPermission('Manage Media Submissions')) {
       fetchMediaSubmissions();
     }
-    if (activeAdminTab === 'counselling') {
+    if (activeAdminTab === 'students') {
       fetchAdminStudents();
     }
   }, [activeAdminTab]);
@@ -362,7 +333,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     }
   };
 
-  // Student Counselling handlers
+  // Student Directory handlers
   const openAddStudentModal = () => {
     setEditingStudentId(null);
     setDuplicateAlert(null);
@@ -461,90 +432,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
   };
 
   const handleDeleteStudent = async (stu: Student) => {
-    if (confirm(`Are you sure you want to permanently archive student "${stu.name}" (${stu.rollNumber})? This will delete all their counselling histories.`)) {
+    if (confirm(`Are you sure you want to permanently delete student "${stu.name}" (${stu.rollNumber})?`)) {
       const result = await deleteStudent(stu.id);
       if (result.success) {
         fetchAdminStudents();
-      } else {
-        alert(result.error);
-      }
-    }
-  };
-
-  const openAddCounsellingModal = (stu: Student) => {
-    setCounsellingStudentId(stu.id);
-    setCounsellingStudentName(stu.name);
-    setEditingSessionId(null);
-    setCounsellingForm({
-      counselling_date: new Date().toISOString().split('T')[0],
-      type: 'Academic',
-      private_notes: '',
-      student_concerns: '',
-      guidance: '',
-      action_items: '',
-      follow_up_date: '',
-      follow_up_required: 'No',
-      status: 'Completed'
-    });
-    setShowCounsellingFormModal(true);
-  };
-
-  const openEditCounsellingModal = (session: CounsellingSession, studentName: string) => {
-    setCounsellingStudentId(session.student_id);
-    setCounsellingStudentName(studentName);
-    setEditingSessionId(session.id);
-    setCounsellingForm({
-      counselling_date: session.counselling_date,
-      type: session.type,
-      private_notes: session.private_notes,
-      student_concerns: session.student_concerns || '',
-      guidance: session.guidance || '',
-      action_items: session.action_items || '',
-      follow_up_date: session.follow_up_date || '',
-      follow_up_required: session.follow_up_required,
-      status: session.status
-    });
-    setShowCounsellingFormModal(true);
-  };
-
-  const handleCounsellingFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!counsellingForm.counselling_date || !counsellingForm.type || !counsellingForm.private_notes) {
-      alert('Counselling Date, Counselling Category, and Discussion Notes are required.');
-      return;
-    }
-
-    let result: any;
-    if (editingSessionId) {
-      result = await updateCounsellingSession(editingSessionId, counsellingForm);
-    } else {
-      if (counsellingStudentId) {
-        result = await addCounsellingSession(counsellingStudentId, counsellingForm);
-      } else {
-        alert('No student selected.');
-        return;
-      }
-    }
-
-    if (result.success) {
-      setShowCounsellingFormModal(false);
-      if (viewingStudentProfile && counsellingStudentId) {
-        const history = await fetchCounsellingHistory(counsellingStudentId);
-        setCounsellingHistory(history);
-      }
-    } else {
-      alert(result.error || 'Failed to save counselling session.');
-    }
-  };
-
-  const handleDeleteCounselling = async (sessionId: number, studentIdForReload?: string) => {
-    if (confirm('Are you sure you want to permanently delete this counselling session record?')) {
-      const result = await deleteCounsellingSession(sessionId);
-      if (result.success) {
-        if (viewingStudentProfile && studentIdForReload) {
-          const history = await fetchCounsellingHistory(studentIdForReload);
-          setCounsellingHistory(history);
-        }
       } else {
         alert(result.error);
       }
@@ -625,9 +516,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     }
   };
 
-  const handleViewProfile = async (stu: Student) => {
-    const history = await fetchCounsellingHistory(stu.id);
-    setCounsellingHistory(history);
+  const handleViewProfile = (stu: Student) => {
     setViewingStudentProfile(stu);
   };
 
@@ -1258,17 +1147,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
             </button>
           )}
 
-          {(hasPermission('View Students') || hasPermission('View Counselling') || hasPermission('Manage Students') || hasPermission('Manage Counselling')) && (
+          {(hasPermission('View Students') || hasPermission('Manage Students')) && (
             <button
-              onClick={() => { setActiveAdminTab('counselling'); setSidebarOpen(false); }}
+              onClick={() => { setActiveAdminTab('students'); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                activeAdminTab === 'counselling'
+                activeAdminTab === 'students'
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <HeartHandshake className="h-4.5 w-4.5" />
-              <span>Student Counselling</span>
+              <Users className="h-4.5 w-4.5" />
+              <span>Student Directory</span>
             </button>
           )}
 
@@ -1366,7 +1255,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
               {activeAdminTab === 'overview' && 'Dashboard Overview'}
               {activeAdminTab === 'subadmins' && 'Sub-Admin Management'}
               {activeAdminTab === 'methods' && 'Innovative Teaching Methods'}
-              {activeAdminTab === 'counselling' && 'Student Counselling Management'}
+              {activeAdminTab === 'students' && 'Student Directory & Roster'}
               {activeAdminTab === 'content' && 'Digital Courseware Hub'}
               {activeAdminTab === 'submissions' && 'Media Submissions'}
               {activeAdminTab === 'logs' && 'Security Audit Logs'}
@@ -1376,7 +1265,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
               {activeAdminTab === 'overview' && `Welcome back, ${adminUser?.name || 'Admin'}. Manage academic modules.`}
               {activeAdminTab === 'subadmins' && 'Create and manage administrators who can help manage the academic portal.'}
               {activeAdminTab === 'methods' && 'Manage, update, and configure differentiated ECE teaching methodologies.'}
-              {activeAdminTab === 'counselling' && 'Manage student counselling sessions, histories, and safe homepage updates.'}
+              {activeAdminTab === 'students' && 'Manage student records, batches, performance metrics, and academic profiles.'}
               {activeAdminTab === 'content' && 'Upload, review, and delete digital assets, video lectures, and documents.'}
               {activeAdminTab === 'submissions' && 'Review and approve public media submissions.'}
               {activeAdminTab === 'logs' && 'Full forensic trace of administrative and content actions.'}
@@ -2750,21 +2639,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
         )}
 
         {/* ==========================================
-            4. TAB: STUDENT COUNSELLING MANAGEMENT
+            4. TAB: STUDENT DIRECTORY & ROSTER
             ========================================== */}
-        {activeAdminTab === 'counselling' && (
+        {activeAdminTab === 'students' && (
           <div className="space-y-6 animate-fade-in text-xs">
             
             {/* Header & Controls */}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                  <HeartHandshake className="h-4.5 w-4.5 text-emerald-600" />
-                  <span>{isSuperAdmin ? 'Comprehensive Student Counselling Roster' : 'Your Assigned Mentee Roster'}</span>
+                  <Users className="h-4.5 w-4.5 text-dhanekula-royal" />
+                  <span>{isSuperAdmin ? 'Comprehensive Student Directory & Roster' : 'Your Assigned Mentee Roster'}</span>
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
                   {isSuperAdmin
-                    ? `Super Admin Overview: All ${adminStudents.length} students across the department with counselling timeline logs, counsellor assignments, and results.`
+                    ? `Super Admin Overview: All ${adminStudents.length} students across ECE cohorts with academic performance records and mentorship assignments.`
                     : `Faculty Mentorship: Viewing ${adminStudents.length} students assigned specifically to your mentorship portfolio.`}
                 </p>
               </div>
@@ -2792,26 +2681,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
               </div>
               <div className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider block">
-                  Counselled Students
+                  Regular Students
                 </span>
                 <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
-                  {adminStudents.filter(s => (s.counsellingSessionsCount || 0) > 0).length}
+                  {adminStudents.filter(s => (s.academicStatus || 'Regular') === 'Regular').length}
                 </span>
               </div>
               <div className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider block">
-                  Needs Counselling
+                <span className="text-[10px] text-sky-600 dark:text-sky-400 font-bold uppercase tracking-wider block">
+                  High Attendance (&ge;85%)
                 </span>
-                <span className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1 block">
-                  {adminStudents.filter(s => (s.counsellingSessionsCount || 0) === 0).length}
+                <span className="text-xl font-black text-sky-600 dark:text-sky-400 mt-1 block">
+                  {adminStudents.filter(s => (s.attendance || 0) >= 85).length}
                 </span>
               </div>
               <div className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
                 <span className="text-[10px] text-dhanekula-royal dark:text-dhanekula-400 font-bold uppercase tracking-wider block">
-                  {isSuperAdmin ? 'Faculty Counsellors' : 'Your Total Sessions'}
+                  Average GPA
                 </span>
                 <span className="text-xl font-black text-dhanekula-royal dark:text-dhanekula-400 mt-1 block">
-                  {isSuperAdmin ? subAdmins.length : adminStudents.reduce((acc, s) => acc + (s.counsellingSessionsCount || 0), 0)}
+                  {adminStudents.length ? (adminStudents.reduce((acc, s) => acc + (s.gpa || 0), 0) / adminStudents.length).toFixed(2) : '0.00'} / 10
                 </span>
               </div>
             </div>
@@ -2830,46 +2719,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                   className="pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-900 dark:text-white w-full focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
-
-              {/* Counsellor Filter (Super Admin Only) */}
-              {isSuperAdmin && (
-                <select
-                  value={filterCounsellor}
-                  onChange={(e) => setFilterCounsellor(e.target.value)}
-                  className="p-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-800 dark:text-slate-200 font-bold"
-                >
-                  <option value="All">All Counsellors</option>
-                  <option value="Unassigned">Unassigned Only</option>
-                  {subAdmins.map(sa => (
-                    <option key={sa.id} value={sa.name}>
-                      Counsellor: {sa.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {/* Counselling Status Filter */}
-              <select
-                value={filterCounsellingStatus}
-                onChange={(e) => setFilterCounsellingStatus(e.target.value)}
-                className="p-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-800 dark:text-slate-200 font-bold"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Counselled">Counselled (Has Notes)</option>
-                <option value="Pending">Needs Counselling (0 Notes)</option>
-              </select>
-
-              {/* Counselling Date Filter */}
-              <select
-                value={filterCounsellingDate}
-                onChange={(e) => setFilterCounsellingDate(e.target.value)}
-                className="p-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-800 dark:text-slate-200"
-              >
-                <option value="All">All Session Dates</option>
-                <option value="Last 7 Days">Last 7 Days</option>
-                <option value="Last 30 Days">Last 30 Days</option>
-                <option value="This Year">This Year</option>
-              </select>
 
               {/* Batch Filter */}
               <select
@@ -2898,13 +2747,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                 <option value="4th Year">4th Year</option>
               </select>
 
+              {/* Section Filter */}
+              <select
+                value={filterSection}
+                onChange={(e) => setFilterSection(e.target.value)}
+                className="p-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-800 dark:text-slate-200"
+              >
+                <option value="All">All Sections</option>
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+              </select>
+
               {/* Academic Status Filter */}
               <select
                 value={filterAcademicStatus}
                 onChange={(e) => setFilterAcademicStatus(e.target.value)}
                 className="p-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-800 dark:text-slate-200"
               >
-                <option value="All">All Performance Statuses</option>
+                <option value="All">All Statuses</option>
                 <option value="Regular">Regular</option>
                 <option value="Condonation">Condonation</option>
                 <option value="Detained">Detained</option>
@@ -2916,14 +2777,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
             {adminStudents.length === 0 && !isSuperAdmin ? (
               <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="h-16 w-16 rounded-full bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
-                  <HeartHandshake className="h-8 w-8" />
+                  <Users className="h-8 w-8" />
                 </div>
                 <div className="space-y-1 max-w-md mx-auto">
                   <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">
                     No Students Currently Assigned
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    You currently have no students assigned to your counselling roster. The Super Admin assigns students to faculty counsellors. Please reach out to your department Super Admin to receive your mentee cohort.
+                    You currently have no students assigned to your mentee roster. The Super Admin assigns students to faculty mentors.
                   </p>
                 </div>
               </div>
@@ -2935,10 +2796,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                       <tr>
                         <th className="px-5 py-4">Student</th>
                         <th className="px-5 py-4">Roll Number / ID</th>
-                        <th className="px-5 py-4">{isSuperAdmin ? 'Assigned Counsellor' : 'Mentorship'}</th>
-                        <th className="px-5 py-4">Latest Counselling</th>
-                        <th className="px-5 py-4">Sessions</th>
-                        <th className="px-5 py-4">Results & Stats</th>
+                        <th className="px-5 py-4">Class & Batch</th>
+                        <th className="px-5 py-4">{isSuperAdmin ? 'Assigned Mentor' : 'Mentorship'}</th>
+                        <th className="px-5 py-4">Performance & Stats</th>
                         <th className="px-5 py-4 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -2953,47 +2813,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                         const matchesStatus = filterAcademicStatus === 'All' || s.academicStatus === filterAcademicStatus;
                         const matchesBatch = filterBatch === 'All' || s.batch === filterBatch;
 
-                        // Counsellor filter (Super Admin)
-                        let matchesCounsellor = true;
-                        if (isSuperAdmin && filterCounsellor !== 'All') {
-                          if (filterCounsellor === 'Unassigned') {
-                            matchesCounsellor = !s.assignedSubAdminId && !s.assignedSubAdminName;
-                          } else {
-                            matchesCounsellor = s.assignedSubAdminName === filterCounsellor || s.assignedSubAdminId?.toString() === filterCounsellor;
-                          }
-                        }
-
-                        // Counselling status filter
-                        let matchesCounsellingStatus = true;
-                        if (filterCounsellingStatus === 'Counselled') {
-                          matchesCounsellingStatus = (s.counsellingSessionsCount || 0) > 0;
-                        } else if (filterCounsellingStatus === 'Pending') {
-                          matchesCounsellingStatus = (s.counsellingSessionsCount || 0) === 0;
-                        }
-
-                        // Counselling Date filter
-                        let matchesCounsellingDate = true;
-                        if (filterCounsellingDate !== 'All') {
-                          if (!s.latestCounsellingDate) {
-                            matchesCounsellingDate = false;
-                          } else {
-                            const sessionDate = new Date(s.latestCounsellingDate);
-                            const now = new Date();
-                            if (filterCounsellingDate === 'Last 7 Days') {
-                              const diffDays = (now.getTime() - sessionDate.getTime()) / (1000 * 3600 * 24);
-                              matchesCounsellingDate = diffDays <= 7;
-                            } else if (filterCounsellingDate === 'Last 30 Days') {
-                              const diffDays = (now.getTime() - sessionDate.getTime()) / (1000 * 3600 * 24);
-                              matchesCounsellingDate = diffDays <= 30;
-                            } else if (filterCounsellingDate === 'This Year') {
-                              matchesCounsellingDate = sessionDate.getFullYear() === now.getFullYear();
-                            }
-                          }
-                        }
-
-                        return matchesSearch && matchesYear && matchesSec && matchesStatus && matchesBatch && matchesCounsellor && matchesCounsellingStatus && matchesCounsellingDate;
+                        return matchesSearch && matchesYear && matchesSec && matchesStatus && matchesBatch;
                       }).map((stu) => {
-                        const hasSessions = (stu.counsellingSessionsCount || 0) > 0;
                         return (
                           <tr key={stu.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                             
@@ -3005,7 +2826,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                                 </div>
                                 <div>
                                   <span className="font-bold text-slate-900 dark:text-white block">{stu.name}</span>
-                                  <span className="text-[10px] text-slate-400 block mt-0.5">{stu.email} • Batch {stu.batch || '2023 - 2027'}</span>
+                                  <span className="text-[10px] text-slate-400 block mt-0.5">{stu.email || 'No email registered'}</span>
                                 </div>
                               </div>
                             </td>
@@ -3016,7 +2837,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                               <span className="text-[10px] text-slate-400 font-mono block">ID: {stu.id}</span>
                             </td>
 
-                            {/* Assigned Counsellor */}
+                            {/* Class & Batch */}
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <span className="font-bold text-slate-900 dark:text-white block">
+                                {stu.year || '3rd Year'} • Sec {stu.section || 'A'}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">Batch {stu.batch || '2023 - 2027'}</span>
+                            </td>
+
+                            {/* Assigned Mentor */}
                             <td className="px-5 py-4 whitespace-nowrap">
                               {stu.assignedSubAdminName ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-dhanekula-50 text-dhanekula-royal dark:bg-dhanekula-950 dark:text-dhanekula-300 border border-dhanekula-200 dark:border-dhanekula-800">
@@ -3028,31 +2857,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                                   Unassigned
                                 </span>
                               )}
-                            </td>
-
-                            {/* Latest Counselling Date & Counsellor */}
-                            <td className="px-5 py-4 whitespace-nowrap">
-                              {stu.latestCounsellingDate ? (
-                                <div>
-                                  <span className="font-mono font-bold text-slate-900 dark:text-white block">{stu.latestCounsellingDate}</span>
-                                  <span className="text-[10px] text-slate-400 block mt-0.5">By {stu.latestCounsellorName || 'Faculty Counsellor'}</span>
-                                </div>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                  No sessions yet
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Sessions Count */}
-                            <td className="px-5 py-4 whitespace-nowrap">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                hasSessions
-                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                              }`}>
-                                {stu.counsellingSessionsCount || 0} {stu.counsellingSessionsCount === 1 ? 'Session' : 'Sessions'}
-                              </span>
                             </td>
 
                             {/* Results & Stats */}
@@ -3068,7 +2872,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                                     {stu.academicStatus || 'Regular'}
                                   </span>
                                 </div>
-                                <span className="text-[10px] text-slate-400">Att: {stu.attendance}% • {stu.year || '3rd Year'} (Sec {stu.section || 'A'})</span>
+                                <span className="text-[10px] text-slate-400">Attendance: {stu.attendance}%</span>
                               </div>
                             </td>
 
@@ -3080,21 +2884,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                                 <button
                                   onClick={() => handleViewProfile(stu)}
                                   className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
-                                  title="View Student Profile & Counselling History Timeline"
+                                  title="View Student Profile"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </button>
-
-                                {/* Record Session shortcut */}
-                                {hasPermission('Manage Counselling') && (
-                                  <button
-                                    onClick={() => openAddCounsellingModal(stu)}
-                                    className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
-                                    title="Record Counselling Note"
-                                  >
-                                    <HeartHandshake className="h-4 w-4" />
-                                  </button>
-                                )}
 
                                 {/* Edit student details */}
                                 {hasPermission('Manage Students') && (
@@ -3125,7 +2918,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                       })}
                       {adminStudents.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-6 py-8 text-center text-slate-450 italic">
+                          <td colSpan={6} className="px-6 py-8 text-center text-slate-450 italic">
                             No student records match your search or filter criteria.
                           </td>
                         </tr>
@@ -3494,7 +3287,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-3 border-b border-slate-100 dark:border-slate-800 text-xs">
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white">Active Visual Mode</h4>
-                  <p className="text-slate-450 text-[11px] mt-0.5">Toggle counseling website light or dark appearance themes.</p>
+                  <p className="text-slate-450 text-[11px] mt-0.5">Toggle portal website light or dark appearance themes.</p>
                 </div>
                 <button
                   onClick={toggleTheme}
@@ -4614,7 +4407,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                     className="mt-1 px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all"
                   >
                     <Eye className="h-3.5 w-3.5" />
-                    Open Existing Student Profile & Add Counselling Note →
+                    Open Existing Student Profile →
                   </button>
                 )}
               </div>
@@ -4830,7 +4623,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                   rows={2}
                   value={studentForm.notes}
                   onChange={(e) => setStudentForm({ ...studentForm, notes: e.target.value })}
-                  placeholder="Enter other general academic notes, counseling warnings, etc."
+                  placeholder="Enter other general academic notes, remarks, etc."
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
                 />
               </div>
@@ -4871,7 +4664,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                 Student Record Created Successfully
               </h3>
               <p className="text-slate-500 dark:text-slate-400 mt-1">
-                The student record has been initialized and is ready for counselling sessions.
+                The student record has been saved successfully.
               </p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-left space-y-2">
@@ -4902,160 +4695,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
         </div>
       )}
 
-      {/* ==========================================
-          MODAL: RECORD/EDIT COUNSELLING SESSION
-          ========================================== */}
-      {showCounsellingFormModal && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in text-xs text-slate-800 dark:text-slate-200">
-          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl my-8">
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                  {editingSessionId ? 'Edit Counselling Record' : 'Record Counselling Session'}
-                </h3>
-                <span className="text-[10px] text-slate-400 mt-0.5 block font-bold">Student: {counsellingStudentName}</span>
-              </div>
-              <button onClick={() => setShowCounsellingFormModal(false)} className="p-1.5 text-slate-450 hover:text-slate-750 dark:hover:text-slate-200">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
 
-            <form onSubmit={handleCounsellingFormSubmit} className="space-y-4 pt-4">
-              
-              {/* Date & Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Counselling Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={counsellingForm.counselling_date}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, counselling_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Counselling Category *</label>
-                  <select
-                    value={counsellingForm.type}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, type: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none font-bold"
-                  >
-                    <option value="Academic">Academic Guidance</option>
-                    <option value="Career">Career & Placement</option>
-                    <option value="Attendance">Low Attendance Warning</option>
-                    <option value="Performance">Low Mid-Term Performance</option>
-                    <option value="Disciplinary">Disciplinary Counsel</option>
-                    <option value="Personal">Personal Counselling</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Private Discussion Notes (Strictly Confidential) */}
-              <div className="space-y-1 bg-red-50/20 dark:bg-red-950/10 border border-red-250/25 dark:border-red-900/25 p-4.5 rounded-2xl">
-                <label className="font-extrabold text-red-700 dark:text-red-400 block uppercase tracking-wider text-[10px] mb-1">
-                  Private Discussion Notes * (Strictly Confidential - Admins Only)
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  value={counsellingForm.private_notes}
-                  onChange={(e) => setCounsellingForm({ ...counsellingForm, private_notes: e.target.value })}
-                  placeholder="Enter detailed counseling session logs. These notes are stored securely and never exposed publicly."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-55 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
-                />
-              </div>
-
-              {/* Concerns, Guidance, Actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Student Primary Concerns</label>
-                  <textarea
-                    rows={2.5}
-                    value={counsellingForm.student_concerns}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, student_concerns: e.target.value })}
-                    placeholder="Concerns raised by the student..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Guidance Provided</label>
-                  <textarea
-                    rows={2.5}
-                    value={counsellingForm.guidance}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, guidance: e.target.value })}
-                    placeholder="Advisory guidance given..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Action Items / Recommendations</label>
-                  <textarea
-                    rows={2.5}
-                    value={counsellingForm.action_items}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, action_items: e.target.value })}
-                    placeholder="Recommended next steps..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Follow up & status */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Follow-Up Required?</label>
-                  <select
-                    value={counsellingForm.follow_up_required}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, follow_up_required: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none font-bold"
-                  >
-                    <option value="No">No Follow-Up Required</option>
-                    <option value="Yes">Yes, Follow-Up Needed</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Follow-Up Date</label>
-                  <input
-                    type="date"
-                    value={counsellingForm.follow_up_date}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, follow_up_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-450">Counselling Record Status</label>
-                  <select
-                    value={counsellingForm.status}
-                    onChange={(e) => setCounsellingForm({ ...counsellingForm, status: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none font-bold"
-                  >
-                    <option value="Completed">Completed Record</option>
-                    <option value="Follow-Up Required">Needs Review / Follow-Up</option>
-                    <option value="Draft">Draft Record</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Form Buttons */}
-              <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3.5">
-                <button
-                  type="button"
-                  onClick={() => setShowCounsellingFormModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                >
-                  {editingSessionId ? 'Update Record' : 'Save Counselling Session'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ==========================================
           MODAL: VIEW STUDENT DETAILS & TIMELINE PROFILE
@@ -5138,20 +4778,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                 </div>
               </div>
 
-              {/* Assigned Counsellor Banner */}
+              {/* Assigned Faculty Mentor Banner */}
               <div className="p-3 bg-dhanekula-50/60 dark:bg-dhanekula-950/40 rounded-2xl border border-dhanekula-200/50 dark:border-dhanekula-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <HeartHandshake className="h-4 w-4 text-dhanekula-royal dark:text-dhanekula-400" />
+                  <Users className="h-4 w-4 text-dhanekula-royal dark:text-dhanekula-400" />
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Designated Faculty Counsellor</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Designated Faculty Mentor</span>
                     <span className="font-bold text-slate-900 dark:text-white text-xs">
-                      {viewingStudentProfile.assignedSubAdminName ? `${viewingStudentProfile.assignedSubAdminName} (Faculty Mentor)` : 'Unassigned (No faculty counsellor allotted yet)'}
+                      {viewingStudentProfile.assignedSubAdminName ? `${viewingStudentProfile.assignedSubAdminName} (Faculty Mentor)` : 'Unassigned'}
                     </span>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300">
-                  {counsellingHistory.length} Total {counsellingHistory.length === 1 ? 'Session' : 'Sessions'}
-                </span>
               </div>
 
               {viewingStudentProfile.notes && (
@@ -5160,95 +4797,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
                   <p className="text-slate-700 dark:text-slate-300 italic">"{viewingStudentProfile.notes}"</p>
                 </div>
               )}
-
-              {/* Counselling Sessions Timeline list */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="font-black text-slate-900 dark:text-white uppercase tracking-tight block">
-                    Counselling History Logs ({counsellingHistory.length})
-                  </span>
-                  
-                  {hasPermission('Manage Counselling') && (
-                    <button
-                      onClick={() => {
-                        setViewingStudentProfile(null);
-                        openAddCounsellingModal(viewingStudentProfile);
-                      }}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold flex items-center gap-1 transition-colors"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Add Session Record
-                    </button>
-                  )}
-                </div>
-
-                {counsellingHistory.length === 0 ? (
-                  <div className="p-6 text-center bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200/60 dark:border-slate-800 text-slate-500 italic text-[11px]">
-                    No counselling sessions recorded for this student yet. Click "Add Session Record" to record a new session.
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
-                    {counsellingHistory.map((session) => (
-                      <div
-                        key={session.id}
-                        className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 relative group"
-                      >
-                        {/* Session Metadata header */}
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="font-mono font-bold text-slate-900 dark:text-white">{session.counselling_date}</span>
-                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded ml-2 uppercase tracking-wide inline-block">{session.type} Guidance</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
-                            <span>Counsellor: {session.counsellor_name}</span>
-                            
-                            {/* Controls */}
-                            {hasPermission('Manage Counselling') && (
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 ml-2">
-                                <button
-                                  onClick={() => {
-                                    setViewingStudentProfile(null);
-                                    openEditCounsellingModal(session, viewingStudentProfile.name);
-                                  }}
-                                  className="p-1 text-slate-450 hover:text-sky-600 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteCounselling(session.id, viewingStudentProfile.id)}
-                                  className="p-1 text-slate-450 hover:text-red-650 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Private notes display */}
-                        <div className="bg-red-50/20 dark:bg-red-950/10 border border-red-200/30 dark:border-red-900/20 p-3 rounded-xl">
-                          <span className="text-[9px] font-bold text-red-750 dark:text-red-400 block uppercase mb-1">Confidential Discussion Log:</span>
-                          <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed font-sans">{session.private_notes}</p>
-                        </div>
-
-                        {/* Concerns, action items info */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] leading-relaxed text-slate-500">
-                          {session.student_concerns && (
-                            <p><strong>Concerns:</strong> {session.student_concerns}</p>
-                          )}
-                          {session.guidance && (
-                            <p><strong>Guidance:</strong> {session.guidance}</p>
-                          )}
-                          {session.action_items && (
-                            <p><strong>Actions:</strong> {session.action_items}</p>
-                          )}
-                        </div>
-
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
 
             </div>
 

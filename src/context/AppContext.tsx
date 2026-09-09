@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { TeachingMethod, WeeklyActivity, CoursewareResource, Student, UserRole, CohortType, AdminUser, AuditLog, MediaSubmission, CounsellingSession, TeachingTask, TeachingSubmission } from '../types';
+import { TeachingMethod, WeeklyActivity, CoursewareResource, Student, UserRole, CohortType, AdminUser, AuditLog, MediaSubmission, TeachingTask, TeachingSubmission } from '../types';
 import {
   INITIAL_TEACHING_METHODS,
   INITIAL_WEEKLY_PLAN,
@@ -84,10 +84,6 @@ interface AppContextType {
   addStudent: (data: any) => Promise<{ success: boolean; error?: string; studentId?: string; duplicate?: boolean; existingStudentId?: string }>;
   updateStudent: (id: string, data: any) => Promise<{ success: boolean; error?: string }>;
   deleteStudent: (id: string) => Promise<{ success: boolean; error?: string }>;
-  fetchCounsellingHistory: (studentId: string) => Promise<CounsellingSession[]>;
-  addCounsellingSession: (studentId: string, data: any) => Promise<{ success: boolean; error?: string }>;
-  updateCounsellingSession: (sessionId: number, data: any) => Promise<{ success: boolean; error?: string }>;
-  deleteCounsellingSession: (sessionId: number) => Promise<{ success: boolean; error?: string }>;
   assignments: any[];
   assignmentHistory: any[];
   fetchAssignments: () => Promise<void>;
@@ -138,8 +134,6 @@ export const DEFAULT_SUB_ADMINS: AdminUser[] = [
       'Edit Content',
       'View Analytics',
       'View Students',
-      'Manage Counselling',
-      'View Counselling',
       'Manage Media Submissions'
     ],
     created_at: new Date().toISOString()
@@ -704,9 +698,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             'Manage Student Cohorts',
             'Manage Courses',
             'Create Content',
-            'Manage Counselling',
-            'View Counselling',
-            'Publish Counselling',
             'View Activity Logs',
             'Manage Sub-Admins',
             'Manage Media Submissions'
@@ -828,8 +819,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'Edit Content',
         'View Analytics',
         'View Students',
-        'Manage Counselling',
-        'View Counselling',
         'Manage Media Submissions'
       ],
       created_at: new Date().toISOString()
@@ -1278,112 +1267,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const fetchCounsellingHistory = async (studentId: string): Promise<CounsellingSession[]> => {
-    try {
-      const res = await fetch(`/api/admin/students/${studentId}/counselling`, { credentials: 'include' });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (err) {
-      console.error('Error fetching counselling history:', err);
-    }
-    return [];
-  };
-
-  const addCounsellingSession = async (studentId: string, data: any) => {
-    const addInLocal = () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(`dhanekula_counselling_${studentId}`) || '[]');
-        const newSession: CounsellingSession = {
-          id: Date.now(),
-          student_id: studentId,
-          counsellor_id: adminUser?.id || 1,
-          counsellor_name: adminUser?.name || 'Academic Mentor',
-          counselling_date: data.counselling_date || data.date || new Date().toISOString().split('T')[0],
-          type: data.type || data.category || 'Academic Progress',
-          private_notes: data.private_notes || data.discussionNotes || data.discussion_notes || '',
-          student_concerns: data.student_concerns || '',
-          guidance: data.guidance || data.actionPlan || data.action_plan || '',
-          action_items: data.action_items || '',
-          follow_up_required: data.follow_up_required || 'No',
-          status: data.status || 'Completed',
-          created_at: new Date().toISOString()
-        };
-        localStorage.setItem(`dhanekula_counselling_${studentId}`, JSON.stringify([newSession, ...saved]));
-        showToast(`Counselling session recorded.`);
-        return { success: true };
-      } catch {
-        return { success: true };
-      }
-    };
-
-    if (!isApiMode) return addInLocal();
-
-    try {
-      const res = await fetch(`/api/admin/students/${studentId}/counselling`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include'
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        return { success: false, error: resData.error || 'Failed to record session.' };
-      }
-      showToast(`Counselling session recorded.`);
-      return { success: true };
-    } catch (err) {
-      return addInLocal();
-    }
-  };
-
-  const updateCounsellingSession = async (sessionId: number, data: any) => {
-    if (!isApiMode) {
-      showToast(`Counselling session updated.`);
-      return { success: true };
-    }
-
-    try {
-      const res = await fetch(`/api/admin/counselling/${sessionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include'
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        return { success: false, error: resData.error || 'Failed to update session.' };
-      }
-      showToast(`Counselling session updated.`);
-      return { success: true };
-    } catch (err) {
-      showToast(`Counselling session updated (Local mode).`);
-      return { success: true };
-    }
-  };
-
-  const deleteCounsellingSession = async (sessionId: number) => {
-    if (!isApiMode) {
-      showToast(`Counselling session deleted.`);
-      return { success: true };
-    }
-
-    try {
-      const res = await fetch(`/api/admin/counselling/${sessionId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        return { success: false, error: resData.error || 'Failed to delete session.' };
-      }
-      showToast(`Counselling session deleted.`);
-      return { success: true };
-    } catch (err) {
-      showToast(`Counselling session deleted (Local mode).`);
-      return { success: true };
-    }
-  };
 
   const fetchAssignments = async () => {
     try {
@@ -1833,10 +1716,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addStudent,
         updateStudent,
         deleteStudent,
-        fetchCounsellingHistory,
-        addCounsellingSession,
-        updateCounsellingSession,
-        deleteCounsellingSession,
         assignments,
         assignmentHistory,
         fetchAssignments,

@@ -48,7 +48,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
           className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors btn-micro-interaction"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Counseling Hub</span>
+          <span>Back to Main Portal</span>
         </button>
         <div className="flex items-center gap-2">
           <GraduationCap className="h-5 w-5 text-dhanekula-royal" />
@@ -70,7 +70,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
               Sign In to Portal
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Dhanekula ECE Academic & Sub-Admin Counseling System
+              Dhanekula ECE Academic & Learning Strategies Portal
             </p>
           </div>
 

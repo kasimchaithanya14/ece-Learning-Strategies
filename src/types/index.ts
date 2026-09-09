@@ -79,9 +79,6 @@ export interface Student {
   batch?: string;
   assignedSubAdminId?: number;
   assignedSubAdminName?: string;
-  latestCounsellingDate?: string;
-  latestCounsellorName?: string;
-  counsellingSessionsCount?: number;
 }
 
 export interface QuizQuestion {
@@ -140,29 +137,6 @@ export interface MediaSubmission {
   created_at: string;
 }
 
-export interface CounsellingSession {
-  id: number;
-  student_id: string;
-  counsellor_id: number;
-  counsellor_name: string;
-  counselling_date: string;
-  type: string;
-  private_notes: string;
-  student_concerns?: string;
-  guidance?: string;
-  action_items?: string;
-  follow_up_date?: string;
-  follow_up_required: 'Yes' | 'No';
-  status: 'Draft' | 'Completed' | 'Follow-Up Required';
-  publish_to_home?: number;
-  allow_student_name_public?: number;
-  public_title?: string;
-  public_summary?: string;
-  created_at?: string;
-  updated_at?: string;
-  student_name?: string;
-  student_roll?: string;
-}
 
 export interface TeachingTask {
   id: number;

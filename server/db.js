@@ -163,32 +163,7 @@ export const initDb = async () => {
     )
   `);
 
-  // 8. Counselling Sessions Table
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS counselling_sessions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      student_id TEXT NOT NULL,
-      counsellor_id INTEGER NOT NULL,
-      counsellor_name TEXT NOT NULL,
-      counselling_date TEXT NOT NULL,
-      type TEXT NOT NULL,
-      private_notes TEXT NOT NULL,
-      student_concerns TEXT,
-      guidance TEXT,
-      action_items TEXT,
-      follow_up_date TEXT,
-      follow_up_required TEXT NOT NULL DEFAULT 'No',
-      status TEXT NOT NULL DEFAULT 'Completed',
-      publish_to_home INTEGER DEFAULT 0,
-      allow_student_name_public INTEGER DEFAULT 0,
-      public_title TEXT,
-      public_summary TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-      FOREIGN KEY (counsellor_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
+
 
   // 9. Student Assignments Table
   await dbRun(`
@@ -331,9 +306,6 @@ export const initDb = async () => {
       'View Analytics',
       'Manage Students',
       'View Students',
-      'Manage Counselling',
-      'View Counselling',
-      'Publish Counselling',
       'View Activity Logs',
       'Manage Sub-Admins',
       'Manage Media Submissions'
@@ -877,8 +849,6 @@ export const initDb = async () => {
       'Edit Content',
       'View Students',
       'Manage Students',
-      'View Counselling',
-      'Manage Counselling',
       'Manage Media Submissions'
     ]);
     const subResult = await dbRun(
