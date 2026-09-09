@@ -690,7 +690,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
         permissions: []
       });
     } else {
-      alert(res.error || 'Failed to create sub-admin.');
+      showToast(res.error || 'Failed to create sub-admin.');
     }
   };
 
@@ -709,7 +709,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     if (res.success) {
       setEditingSubAdmin(null);
     } else {
-      alert(res.error || 'Failed to update sub-admin.');
+      showToast(res.error || 'Failed to update sub-admin.');
     }
   };
 
@@ -731,7 +731,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
       setPasswordResetSubAdmin(null);
       setResetPassForm({ newPassword: '', confirmPassword: '' });
     } else {
-      alert(res.error || 'Failed to reset password.');
+      showToast(res.error || 'Failed to reset password.');
     }
   };
 
@@ -746,7 +746,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
         status: newStatus
       });
       if (!res.success) {
-        alert(res.error || 'Failed to toggle account status.');
+        showToast(res.error || 'Failed to toggle account status.');
       }
     }
   };
@@ -755,7 +755,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, initia
     if (confirm(`WARNING: Are you absolutely sure you want to permanently delete sub-admin "${name}"?\nThis action cannot be undone.`)) {
       const res = await deleteSubAdmin(id);
       if (!res.success) {
-        alert(res.error || 'Failed to delete sub-admin.');
+        showToast(res.error || 'Failed to delete sub-admin.');
       }
     }
   };

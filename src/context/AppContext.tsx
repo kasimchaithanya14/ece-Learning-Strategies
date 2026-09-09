@@ -856,6 +856,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const body = await res.json();
       if (!res.ok) {
+        if (res.status === 404 || res.status === 502 || res.status === 503 || !body.error) {
+          setIsApiMode(false);
+          const existing: AdminUser[] = JSON.parse(localStorage.getItem('dhanekula_sub_admins') || '[]');
+          const updated = [localNewSub, ...existing];
+          localStorage.setItem('dhanekula_sub_admins', JSON.stringify(updated));
+          setSubAdmins(updated);
+          showToast(`Created sub-admin: "${data.name}" (Local mode)`);
+          return { success: true };
+        }
         return { success: false, error: body.error || 'Failed to create sub-admin.' };
       }
       showToast(`Created sub-admin: "${data.name}"`);
