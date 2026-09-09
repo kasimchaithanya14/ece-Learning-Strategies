@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node modules
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Editor directories
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Databases
+*.sqlite
+*.sqlite-journal
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Agent configs & secrets
+.agents/
