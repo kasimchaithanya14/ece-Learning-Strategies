@@ -18,6 +18,7 @@ export const Navbar: React.FC = () => {
     setSearchQuery,
     setIsAITutorOpen,
     setIsDailyQuizOpen,
+    isApiMode,
   } = useApp();
 
   return (
@@ -85,6 +86,23 @@ export const Navbar: React.FC = () => {
             <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-pulse" />
             <span className="hidden sm:inline">Daily Quiz</span>
           </button>
+
+          {/* Backend Connection Indicator */}
+          <div
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl text-[11px] font-bold border transition-all ${
+              isApiMode
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+            }`}
+            title={isApiMode ? 'Live Backend API Connected (Data syncs to Server & Database)' : 'Operating in Client Offline / LocalStorage Mode'}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isApiMode ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+            />
+            <span className="hidden md:inline">{isApiMode ? 'Live Backend' : 'Offline Mode'}</span>
+          </div>
 
           {/* Dark / Light Mode Toggle */}
           <button

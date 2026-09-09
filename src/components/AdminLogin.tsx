@@ -81,21 +81,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
             </div>
           )}
 
-                    {/* Credentials Info Helper */}
-          <div className="p-3 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/50 flex items-center justify-between text-xs">
-            <div>
-              <span className="text-[10px] uppercase font-black text-blue-600 dark:text-blue-400 tracking-wider block">Main Admin Access</span>
-              <span className="text-slate-700 dark:text-slate-300 font-medium">ID: <strong className="font-mono">hod</strong> • Pass: <strong className="font-mono">12345678</strong></span>
-            </div>
-            <button
-              type="button"
-              onClick={() => { setUsername('hod'); setPassword('12345678'); setError(null); }}
-              className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-all shadow-xs"
-            >
-              1-Click Fill
-            </button>
-          </div>
-
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Username / Login ID */}

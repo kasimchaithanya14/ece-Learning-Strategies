@@ -115,9 +115,26 @@ interface AppContextType {
   fetchPublicShowcase: () => Promise<void>;
 }
 
+export const API_BASE = ((import.meta as any).env?.VITE_API_URL || '').replace(/\/+$/, '');
+
+export const getFileUrl = (path?: string) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Scoped fetch to automatically redirect /api calls to API_BASE when VITE_API_URL is configured
+  const fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    let target = input;
+    if (typeof input === 'string' && input.startsWith('/api') && API_BASE) {
+      target = `${API_BASE}${input}`;
+    }
+    return window.fetch(target, init);
+  };
+
   // Traditional Local Roles (default: faculty/student selection)
   const [role, setRoleState] = useState<UserRole>(() => {
     return (localStorage.getItem('dhanekula_role') as UserRole) || 'student';
