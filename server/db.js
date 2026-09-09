@@ -341,9 +341,16 @@ export const initDb = async () => {
     
     await dbRun(
       'INSERT INTO users (name, email, username, password_hash, role, status, permissions) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      ['Super Admin', 'admin@dhanekula.ac.in', adminUsername, passHash, 'SUPER_ADMIN', 'Active', superAdminPerms]
+      ['Dr. Vamshi Krishna (HOD)', 'hod_ece@dhanekula.ac.in', adminUsername, passHash, 'SUPER_ADMIN', 'Active', superAdminPerms]
     );
     console.log(`Seeded default Super Admin with username: "${adminUsername}"`);
+  } else if (superAdmin.username !== adminUsername || superAdmin.username === 'admin') {
+    const passHash = await bcrypt.hash(adminInitialPassword, 10);
+    await dbRun(
+      'UPDATE users SET username = ?, password_hash = ?, name = ?, email = ? WHERE id = ?',
+      [adminUsername, passHash, 'Dr. Vamshi Krishna (HOD)', 'hod_ece@dhanekula.ac.in', superAdmin.id]
+    );
+    console.log(`Updated Super Admin credentials to username: "${adminUsername}"`);
   }
 
   // Seed Teaching Methods
